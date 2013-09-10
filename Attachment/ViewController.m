@@ -15,6 +15,7 @@ const CGFloat kButtonDiameter = 150.0;
 @property (nonatomic, retain) UIDynamicAnimator* animator;
 @property (nonatomic, retain) UIAttachmentBehavior* attachmentBehavior;
 @property (nonatomic, retain) UIAttachmentBehavior* dragAttachmentBehavior;
+@property (nonatomic, retain) UIDynamicItemBehavior* itemBehavior;
 
 @end
 
@@ -58,7 +59,7 @@ const CGFloat kButtonDiameter = 150.0;
     self.attachmentBehavior.damping = 0.1;
     self.attachmentBehavior.frequency = 1.0;
     
-    // Add a view so we can visualize that attchment location
+    // Add a view so we can visualize that attachment location
     [self createAttachmentLocationView];
     CGPoint location = [self.button convertPoint:self.button.center fromView:self.animator.referenceView];
     location.x += offset.horizontal;
@@ -69,6 +70,11 @@ const CGFloat kButtonDiameter = 150.0;
     // Step 3: Setup a pan gesture recognizer so we can drag the button around
     self.panRecognizer = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(didPan:)];
     [self.button addGestureRecognizer:self.panRecognizer];
+    
+    // Step 3, Part 3: add an item behavior so we can apply a velocity
+    self.itemBehavior = [[UIDynamicItemBehavior alloc] initWithItems:@[self.button]];
+    self.itemBehavior.resistance = 0.1;
+    [self.animator addBehavior:self.itemBehavior];
 }
 
 - (void) styleButton:(UIButton*)button
@@ -108,8 +114,6 @@ const CGFloat kButtonDiameter = 150.0;
 
 -(void) didPan:(UIPanGestureRecognizer*)panRecognizer
 {
-    // Step 3, Part 2:
-    
     // We'll only add the attachment for dragging, when a drag starts
     // otherwise the attachment will hold the item in place even
     // when we are not moving it.
@@ -126,6 +130,11 @@ const CGFloat kButtonDiameter = 150.0;
     }
     else if ( panRecognizer.state == UIGestureRecognizerStateEnded )
     {
+        // Step 3, Part 3: Add some fling
+        
+        CGPoint velocity = [panRecognizer velocityInView:self.view];
+        [self.itemBehavior addLinearVelocity:velocity forItem:self.button];
+        
         [self.animator removeBehavior:self.dragAttachmentBehavior];
         self.dragAttachmentBehavior = nil;
     }
