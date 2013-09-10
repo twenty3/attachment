@@ -9,6 +9,7 @@ const CGFloat kButtonDiameter = 150.0;
 @interface ViewController ()
 
 @property (nonatomic, retain) UIButton* button;
+@property (nonatomic, retain) UIPanGestureRecognizer* panRecognizer;
 @property (nonatomic, retain) UIView* attachmentAnchorView;
 @property (nonatomic, retain) UIView* attachmentLocationView;
 @property (nonatomic, retain) UIDynamicAnimator* animator;
@@ -24,10 +25,8 @@ const CGFloat kButtonDiameter = 150.0;
     
     self.animator = [[UIDynamicAnimator alloc] initWithReferenceView:self.view];
     
-    // Step 1: Create a button with some gravity
     self.button = [[UIButton alloc] initWithFrame:(CGRect){CGPointZero, {kButtonDiameter, kButtonDiameter}}];
     [self.button setTitle:@"Whee!" forState:UIControlStateNormal];
-    [self.button addTarget:self action:@selector(buttonTapped:) forControlEvents:UIControlEventTouchUpInside];
     [self styleButton:self.button];
     [self layoutButton:self.button];
     
@@ -36,21 +35,20 @@ const CGFloat kButtonDiameter = 150.0;
     UIGravityBehavior* gravityBehavior = [[UIGravityBehavior alloc] initWithItems:@[self.button]];
     [self.animator addBehavior:gravityBehavior];
     
-    // Step 2: pin that button in place
     CGPoint attachmentPoint = self.button.center;
         // the anchor point is relative to the animator's reference view, which happens
         // to be the button's parent
-    //attachmentPoint.x -= 50.0;
-    //attachmentPoint.y += 100.0;
+    attachmentPoint.x -= 50.0;
+    attachmentPoint.y += 100.0;
     self.attachmentBehavior = [[UIAttachmentBehavior alloc] initWithItem:self.button attachedToAnchor:attachmentPoint];
-
+    
     // Add a view so we can visualize the attachment anchor
     [self createAttachmentAnchorView];
     self.attachmentAnchorView.center = attachmentPoint;
     [self.view addSubview:self.attachmentAnchorView];
     
     // We can also offset where the attachment is joined to the item
-    //UIOffset offset = {-50.0, 50.0};
+    UIOffset offset = {0.0, 0.0};
     //self.attachmentBehavior = [[UIAttachmentBehavior alloc] initWithItem:self.button offsetFromCenter:offset attachedToAnchor:attachmentPoint];
     
     [self.animator addBehavior:self.attachmentBehavior];
@@ -60,12 +58,18 @@ const CGFloat kButtonDiameter = 150.0;
     //self.attachmentBehavior.frequency = 1000.0;
     
     // Add a view so we can visualize that attchment location
-    //[self createAttachmentLocationView];
-    //CGPoint location = [self.button convertPoint:self.button.center fromView:self.animator.referenceView];
-    //location.x += offset.horizontal;
-    //location.y += offset.vertical;
-    //self.attachmentLocationView.center = location;
-    //[self.button addSubview:self.attachmentLocationView];
+    [self createAttachmentLocationView];
+    CGPoint location = [self.button convertPoint:self.button.center fromView:self.animator.referenceView];
+    location.x += offset.horizontal;
+    location.y += offset.vertical;
+    self.attachmentLocationView.center = location;
+    [self.button addSubview:self.attachmentLocationView];
+    
+    // Step 3: Setup a pan gesture recognizer so we can drag the button around
+    
+    // Add a pan recognizer to drag button 1
+    self.panRecognizer = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(didPan:)];
+    [self.button addGestureRecognizer:self.panRecognizer];
 }
 
 - (void) styleButton:(UIButton*)button
@@ -103,19 +107,17 @@ const CGFloat kButtonDiameter = 150.0;
 
 #pragma mark - Actions
 
-- (void) buttonTapped:(id)sender
+-(void) didPan:(UIPanGestureRecognizer*)panRecognizer
 {
-    // reset to our starting location
-    NSArray* behaviors = self.animator.behaviors;
-    [self.animator removeAllBehaviors];
+    // Let's just move the view manually
+    CGPoint translation = [panRecognizer translationInView:self.view];
     
-    [self layoutButton:self.button];
+    CGRect frame = CGRectOffset(self.button.frame, translation.x, translation.y);
+    self.button.frame = frame;
     
-    for ( UIDynamicBehavior* behavior in behaviors)
-    {
-        [self.animator addBehavior:behavior];
-    }
+    [panRecognizer setTranslation:CGPointZero inView:self.view];
 }
+
 
 
 @end
