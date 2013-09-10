@@ -14,6 +14,7 @@ const CGFloat kButtonDiameter = 150.0;
 @property (nonatomic, retain) UIView* attachmentLocationView;
 @property (nonatomic, retain) UIDynamicAnimator* animator;
 @property (nonatomic, retain) UIAttachmentBehavior* attachmentBehavior;
+@property (nonatomic, retain) UIAttachmentBehavior* dragAttachmentBehavior;
 
 @end
 
@@ -54,8 +55,8 @@ const CGFloat kButtonDiameter = 150.0;
     [self.animator addBehavior:self.attachmentBehavior];
     
     // We can adjust the 'springy-ness' of the attachment
-    //self.attachmentBehavior.damping = 0.1;
-    //self.attachmentBehavior.frequency = 1000.0;
+    self.attachmentBehavior.damping = 0.1;
+    self.attachmentBehavior.frequency = 1.0;
     
     // Add a view so we can visualize that attchment location
     [self createAttachmentLocationView];
@@ -66,8 +67,6 @@ const CGFloat kButtonDiameter = 150.0;
     [self.button addSubview:self.attachmentLocationView];
     
     // Step 3: Setup a pan gesture recognizer so we can drag the button around
-    
-    // Add a pan recognizer to drag button 1
     self.panRecognizer = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(didPan:)];
     [self.button addGestureRecognizer:self.panRecognizer];
 }
@@ -109,14 +108,33 @@ const CGFloat kButtonDiameter = 150.0;
 
 -(void) didPan:(UIPanGestureRecognizer*)panRecognizer
 {
-    // Let's just move the view manually
-    CGPoint translation = [panRecognizer translationInView:self.view];
+    // Step 3, Part 2:
     
-    CGRect frame = CGRectOffset(self.button.frame, translation.x, translation.y);
-    self.button.frame = frame;
-    
-    [panRecognizer setTranslation:CGPointZero inView:self.view];
+    // We'll only add the attachment for dragging, when a drag starts
+    // otherwise the attachment will hold the item in place even
+    // when we are not moving it.
+    if ( panRecognizer.state == UIGestureRecognizerStateBegan )
+    {
+        // Pin the drag attachment to the location we touched in the view
+        // and add it to the animator
+        CGPoint dragPoint = [panRecognizer locationInView:self.view];
+        CGPoint buttonPoint = [panRecognizer locationInView:self.button];
+        CGPoint buttonCenter = {CGRectGetMidX(self.button.bounds), CGRectGetMidY(self.button.bounds)};
+        UIOffset offset = {buttonPoint.x - buttonCenter.x, buttonPoint.y - buttonCenter.y};
+        self.dragAttachmentBehavior = [[UIAttachmentBehavior alloc] initWithItem:self.button offsetFromCenter:offset attachedToAnchor:dragPoint];
+        [self.animator addBehavior:self.dragAttachmentBehavior];
+    }
+    else if ( panRecognizer.state == UIGestureRecognizerStateEnded )
+    {
+        [self.animator removeBehavior:self.dragAttachmentBehavior];
+        self.dragAttachmentBehavior = nil;
+    }
+    else if ( panRecognizer.state == UIGestureRecognizerStateChanged )
+    {
+        [self.dragAttachmentBehavior setAnchorPoint:[panRecognizer locationInView:self.view]];
+    }
 }
+
 
 
 
